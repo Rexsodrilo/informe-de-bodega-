@@ -21,7 +21,7 @@
                             50: '#eff6ff',
                             100: '#dbeafe',
                             500: '#3b82f6',
-                            600: '#2563eb', // Azul Príncipe
+                            600: '#2563eb',
                             700: '#1d4ed8',
                             800: '#1e40af',
                             900: '#1e3a8a',
@@ -46,13 +46,11 @@
         </div>
 
         <div class="flex items-center space-x-6">
-            <!-- Ultima Actualizacion -->
             <div class="text-right text-xs">
                 <span class="text-slate-400 block">Última actualización:</span>
                 <span id="lastUpdateTag" class="font-semibold text-brand-100">Sin datos cargados</span>
             </div>
 
-            <!-- Botón Actualizar Datos con Clave -->
             <button onclick="solicitarAccesoCarga()" class="bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm px-4 py-2 rounded-lg transition duration-200 flex items-center shadow-md">
                 <i class="fa-solid fa-upload mr-2"></i> Actualizar Planilla Excel
             </button>
@@ -77,7 +75,7 @@
         </div>
     </div>
 
-    <!-- Area Oculta de Carga de Archivo (Habilitada para XLSM, XLSX, XLS, XLSB) -->
+    <!-- Area de Carga de Archivo -->
     <div id="containerFileUpload" class="bg-brand-50 border-b border-brand-200 px-6 py-4 hidden">
         <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center space-x-3">
@@ -94,10 +92,10 @@
         </div>
     </div>
 
-    <!-- Layout Principal Con Sidebar a la Derecha -->
+    <!-- Layout Principal -->
     <div class="flex-1 flex overflow-hidden">
 
-        <!-- Area de Contenido Principal (Izquierda) -->
+        <!-- Area de Contenido Principal -->
         <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
 
             <!-- FILTROS GLOBALES -->
@@ -123,11 +121,10 @@
                 </div>
             </div>
 
-            <!-- SECCION: KANBAN OPERATIVO -->
+            <!-- TABLERO KANBAN -->
             <section id="sec-kanban" class="view-section">
                 <h2 class="text-lg font-bold text-brand-900 mb-4 flex items-center"><i class="fa-solid fa-columns text-brand-600 mr-2"></i>Tablero Kanban Operativo</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <!-- Columna C -->
                     <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
                         <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
                             <span class="font-bold text-sm text-green-700">Concluido (C)</span>
@@ -135,7 +132,6 @@
                         </div>
                         <div id="col-C" class="space-y-3 overflow-y-auto max-h-[600px] flex-1"></div>
                     </div>
-                    <!-- Columna A -->
                     <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
                         <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
                             <span class="font-bold text-sm text-blue-700">Aceptado (A)</span>
@@ -143,7 +139,6 @@
                         </div>
                         <div id="col-A" class="space-y-3 overflow-y-auto max-h-[600px] flex-1"></div>
                     </div>
-                    <!-- Columna P -->
                     <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
                         <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
                             <span class="font-bold text-sm text-amber-700">P-Pendiente (P)</span>
@@ -151,7 +146,6 @@
                         </div>
                         <div id="col-P" class="space-y-3 overflow-y-auto max-h-[600px] flex-1"></div>
                     </div>
-                    <!-- Columna Retiros / Excluidos -->
                     <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
                         <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
                             <span class="font-bold text-sm text-purple-700">Retiro Cliente</span>
@@ -162,7 +156,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: KPI 1 - CUMPLIMIENTO 48H HÁBILES -->
+            <!-- KPI 1 -->
             <section id="sec-kpi1" class="view-section hidden">
                 <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-clock text-brand-600 mr-2"></i>Cumplimiento de Compromiso de Despacho (48h Hábiles)</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -188,7 +182,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: KPI 2 - FILL RATE PONDERADO -->
+            <!-- KPI 2 -->
             <section id="sec-kpi2" class="view-section hidden">
                 <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-chart-pie text-brand-600 mr-2"></i>Fill Rate Ponderado por Monto</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,7 +200,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: KPI 3 - QUIEBRE DE STOCK -->
+            <!-- KPI 3 -->
             <section id="sec-kpi3" class="view-section hidden">
                 <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-boxes-packing text-brand-600 mr-2"></i>Quiebre de Stock / Fill Rate por Producto</h2>
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -227,7 +221,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: KPI 4 - NORMA $300.000 -->
+            <!-- KPI 4 -->
             <section id="sec-kpi4" class="view-section hidden">
                 <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-triangle-exclamation text-brand-600 mr-2"></i>Incumplimiento de Norma de Monto Mínimo ($300.000)</h2>
                 <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
@@ -256,7 +250,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: KPI 5 & 6 - RANKINGS -->
+            <!-- KPI 5 & 6 -->
             <section id="sec-kpi5" class="view-section hidden">
                 <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-ranking-star text-brand-600 mr-2"></i>Rankings: Clientes y Operación</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -271,7 +265,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: KPI 7 - ALERTAS RETIRO MAL MARCADO -->
+            <!-- KPI 7 -->
             <section id="sec-kpi7" class="view-section hidden">
                 <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-circle-exclamation text-red-600 mr-2"></i>Alerta: Retiro Mal Marcado como Despacho</h2>
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -293,7 +287,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: KPI 8 - TRANSPORTE DIARIO -->
+            <!-- KPI 8 -->
             <section id="sec-kpi8" class="view-section hidden">
                 <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-truck-road-koenigsegg text-brand-600 mr-2"></i>Transporte Diario (Cont_Hodo + Desp)</h2>
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -314,7 +308,7 @@
                 </div>
             </section>
 
-            <!-- SECCION: DETALLE GERENCIAL (EXPORTABLE) -->
+            <!-- DETALLE GERENCIAL -->
             <section id="sec-detalle" class="view-section hidden">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-bold text-brand-900"><i class="fa-solid fa-table text-brand-600 mr-2"></i>Tabla de Detalle Consolidada por NV</h2>
@@ -349,7 +343,7 @@
 
         </main>
 
-        <!-- SIDEBAR LATERAL GERENCIAL (DERECHA) -->
+        <!-- SIDEBAR LATERAL -->
         <aside class="w-72 bg-brand-dark text-slate-300 flex flex-col border-l border-slate-800 shadow-2xl">
             <div class="p-4 border-b border-slate-800">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Menú Gerencial</p>
@@ -404,12 +398,10 @@
 
     </div>
 
-    <!-- SCRIPT DE LOGICA DE NEGOCIO Y LECTURA EXCEL CON SOPORTE XLSM -->
+    <!-- SCRIPT DE CONTROL Y LECTURA XLSM -->
     <script>
-        // Clave requerida
         const CLAVE_ACCESO = "Victor16";
 
-        // Estructura global de datos parseados
         let globalData = {
             corte: [],
             desp: [],
@@ -420,7 +412,6 @@
 
         let fillRateChartInstance = null;
 
-        // Modal y Autenticación
         function solicitarAccesoCarga() {
             document.getElementById('inputClave').value = '';
             document.getElementById('errorClave').classList.add('hidden');
@@ -445,7 +436,6 @@
             document.getElementById('containerFileUpload').classList.add('hidden');
         }
 
-        // Navegación Sidebar
         function navegarA(idSeccion, btnElement) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById(idSeccion).classList.remove('hidden');
@@ -458,14 +448,12 @@
             btnElement.classList.add('bg-brand-600', 'text-white');
         }
 
-        // Función auxiliar para buscar pestañas de forma flexible (ignora espacios extra y capitalización)
         function obtenerHojaFlexible(workbook, nombreBuscado) {
             const objetivo = nombreBuscado.trim().toLowerCase();
             const nombreReal = workbook.SheetNames.find(s => s.trim().toLowerCase() === objetivo);
             return nombreReal ? workbook.Sheets[nombreReal] : null;
         }
 
-        // Event Listener Carga Archivo Excel (Soporte Mejorado para .XLSM)
         document.getElementById('excelFileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -474,19 +462,22 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    // Habilitar lectura de fechas y macros en formato array
-                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const workbook = XLSX.read(data, { 
+                        type: 'array', 
+                        cellDates: true,
+                        cellNF: false,
+                        cellText: false 
+                    });
 
-                    // Búsqueda flexible de pestañas
                     const sheetCorte = obtenerHojaFlexible(workbook, 'Corte');
                     const sheetDesp = obtenerHojaFlexible(workbook, 'Desp');
                     const sheetHodo = obtenerHojaFlexible(workbook, 'Cont_Hodo');
                     const sheetValor = obtenerHojaFlexible(workbook, 'Valor_DES');
 
-                    globalData.corte = sheetCorte ? XLSX.utils.sheet_to_json(sheetCorte) : [];
-                    globalData.desp = sheetDesp ? XLSX.utils.sheet_to_json(sheetDesp) : [];
-                    globalData.contHodo = sheetHodo ? XLSX.utils.sheet_to_json(sheetHodo) : [];
-                    globalData.valorDes = sheetValor ? XLSX.utils.sheet_to_json(sheetValor) : [];
+                    globalData.corte = sheetCorte ? XLSX.utils.sheet_to_json(sheetCorte, { defval: "" }) : [];
+                    globalData.desp = sheetDesp ? XLSX.utils.sheet_to_json(sheetDesp, { defval: "" }) : [];
+                    globalData.contHodo = sheetHodo ? XLSX.utils.sheet_to_json(sheetHodo, { defval: "" }) : [];
+                    globalData.valorDes = sheetValor ? XLSX.utils.sheet_to_json(sheetValor, { defval: "" }) : [];
 
                     if (globalData.desp.length === 0) {
                         alert("Atención: No se encontraron registros en la pestaña 'Desp'. Asegúrate de que la hoja exista en tu archivo XLSM.");
@@ -494,7 +485,6 @@
 
                     procesarReglasNegocio();
                     
-                    // Actualizar timestamp
                     const now = new Date();
                     document.getElementById('lastUpdateTag').innerText = now.toLocaleString('es-CL');
                     document.getElementById('containerFileUpload').classList.add('hidden');
@@ -506,15 +496,12 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // REGLA DE CÁLCULO: 48h Hábiles (09:00 - 18:00, Lun-Vie)
         function calcularFechaCompromiso(fechaCreacion) {
             if (!fechaCreacion) return null;
             let date = new Date(fechaCreacion);
             if (isNaN(date.getTime())) return null;
 
             let hora = date.getHours();
-            
-            // Regla: si se crea >= 15:00 hrs, el conteo inicia el siguiente día hábil a las 09:00
             if (hora >= 15) {
                 date.setDate(date.getDate() + 1);
                 date.setHours(9, 0, 0, 0);
@@ -523,18 +510,16 @@
             let horasRestantes = 48;
             while (horasRestantes > 0) {
                 let day = date.getDay();
-                // Fin de semana -> Lunes 09:00
-                if (day === 6) { // Sábado
+                if (day === 6) {
                     date.setDate(date.getDate() + 2);
                     date.setHours(9, 0, 0, 0);
                     continue;
-                } else if (day === 0) { // Domingo
+                } else if (day === 0) {
                     date.setDate(date.getDate() + 1);
                     date.setHours(9, 0, 0, 0);
                     continue;
                 }
 
-                // Horario laboral 09:00 a 18:00
                 let actualHora = date.getHours();
                 if (actualHora < 9) {
                     date.setHours(9, 0, 0, 0);
@@ -560,7 +545,6 @@
             return date;
         }
 
-        // PROCESAMIENTO CONSOLIDADO
         function procesarReglasNegocio() {
             let mapaNV = {};
 
@@ -569,8 +553,6 @@
                 if (!nv) return;
 
                 const estado = String(row.nvEstado || row.Estado || 'A').toUpperCase().trim();
-
-                // Regla Exclusión: Nulo
                 if (estado === 'N' || estado === 'NULO') return;
 
                 const fCreacion = row.F_creacion ? new Date(row.F_creacion) : new Date();
@@ -606,7 +588,6 @@
             aplicarFiltros();
         }
 
-        // FILTROS & RENDER
         function aplicarFiltros() {
             const tipo = document.getElementById('filterType').value;
             const fechaFiltroVal = document.getElementById('filterDate').value;
@@ -644,7 +625,6 @@
             return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
         }
 
-        // RENDERERS
         function renderKanban(list) {
             const colC = document.getElementById('col-C');
             const colA = document.getElementById('col-A');
@@ -879,7 +859,6 @@
             });
         }
 
-        // Exportar a CSV
         function exportarCSV() {
             if (globalData.consolidadoNV.length === 0) {
                 alert('No hay datos para exportar');
