@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Despachos & Módulo de Gerencia</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (XLSX) CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb', // Azul Príncipe
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            dark: '#0f172a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar Top -->
+    <header class="bg-brand-dark text-white px-6 py-4 flex justify-between items-center shadow-lg border-b border-brand-700">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid font-bold text-2xl fa-truck-fast text-brand-500"></i>
+            <div>
+                <h1 class="text-xl font-bold leading-tight">Dashboard de Despachos</h1>
+                <p class="text-xs text-slate-400">Sistema de Gestión y Control Gerencial v2</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-6">
+            <!-- Ultima Actualizacion -->
+            <div class="text-right text-xs">
+                <span class="text-slate-400 block">Última actualización:</span>
+                <span id="lastUpdateTag" class="font-semibold text-brand-100">Sin datos cargados</span>
+            </div>
+
+            <!-- Botón Actualizar Datos con Clave -->
+            <button onclick="solicitarAccesoCarga()" class="bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm px-4 py-2 rounded-lg transition duration-200 flex items-center shadow-md">
+                <i class="fa-solid fa-upload mr-2"></i> Actualizar Planilla Excel
+            </button>
+        </div>
+    </header>
+
+    <!-- Modal para Clave de Carga -->
+    <div id="modalAuth" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md border border-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-brand-900"><i class="fa-solid fa-lock text-brand-600 mr-2"></i>Acceso Restringido</h3>
+                <button onclick="cerrarModalAuth()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-sm text-slate-600 mb-4">Ingrese la clave de actualización para habilitar la carga local de la planilla operativa (.xlsx):</p>
+            <input type="password" id="inputClave" placeholder="Clave de seguridad" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-600 mb-2">
+            <p id="errorClave" class="text-xs text-red-600 hidden mb-3"><i class="fa-solid fa-circle-exclamation mr-1"></i>Clave incorrecta. Intente nuevamente.</p>
+            
+            <div class="flex justify-end space-x-2">
+                <button onclick="cerrarModalAuth()" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                <button onclick="validarClave()" class="px-4 py-2 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 font-medium">Validar Clave</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Area Oculta de Carga de Archivo (Se habilita tras validar clave Victor16) -->
+    <div id="containerFileUpload" class="bg-brand-50 border-b border-brand-200 px-6 py-4 hidden">
+        <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-file-excel text-green-600 text-2xl"></i>
+                <div>
+                    <p class="text-sm font-semibold text-brand-900">Acceso concedido. Seleccione el archivo Excel operativo:</p>
+                    <p class="text-xs text-slate-500">Debe contener las pestañas: Corte, Desp, Cont_Hodo, Valor_DES</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-600 file:text-white hover:file:bg-brand-700 cursor-pointer"/>
+                <button onclick="cancelarCarga()" class="text-xs text-slate-500 hover:text-slate-800 underline">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout Principal Con Sidebar a la Derecha -->
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Area de Contenido Principal (Izquierda) -->
+        <main class="flex-1 overflow-y-auto p-6 bg-slate-50">
+
+            <!-- FILTROS GLOBALES -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm font-semibold text-brand-900 flex items-center"><i class="fa-solid fa-filter mr-2 text-brand-600"></i>Filtro Coordinación:</span>
+                    <div>
+                        <label class="text-xs text-slate-500 block">Tipo Filtro</label>
+                        <select id="filterType" onchange="aplicarFiltros()" class="text-sm border border-slate-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-brand-600">
+                            <option value="dia">Por Día</option>
+                            <option value="semana">Por Semana</option>
+                            <option value="todos" selected>Todos los Registros</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-500 block">Fecha/Semana Seleccionada</label>
+                        <input type="date" id="filterDate" onchange="aplicarFiltros()" class="text-sm border border-slate-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-brand-600">
+                    </div>
+                </div>
+
+                <div class="text-xs text-slate-500">
+                    <i class="fa-solid fa-circle-info mr-1 text-brand-600"></i> Las NV con estado <strong>Nulo (N)</strong> son excluidas automáticamente de todos los KPI.
+                </div>
+            </div>
+
+            <!-- SECCION: KANBAN OPERATIVO -->
+            <section id="sec-kanban" class="view-section">
+                <h2 class="text-lg font-bold text-brand-900 mb-4 flex items-center"><i class="fa-solid fa-columns text-brand-600 mr-2"></i>Tablero Kanban Operativo</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Columna C -->
+                    <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
+                            <span class="font-bold text-sm text-green-700">Concluido (C)</span>
+                            <span id="badge-count-C" class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="col-C" class="space-y-3 overflow-y-auto max-h-[600px] flex-1"></div>
+                    </div>
+                    <!-- Columna A -->
+                    <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
+                            <span class="font-bold text-sm text-blue-700">Aceptado (A)</span>
+                            <span id="badge-count-A" class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="col-A" class="space-y-3 overflow-y-auto max-h-[600px] flex-1"></div>
+                    </div>
+                    <!-- Columna P -->
+                    <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
+                            <span class="font-bold text-sm text-amber-700">P-Pendiente (P)</span>
+                            <span id="badge-count-P" class="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="col-P" class="space-y-3 overflow-y-auto max-h-[600px] flex-1"></div>
+                    </div>
+                    <!-- Columna Retiros / Excluidos -->
+                    <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-col">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-300">
+                            <span class="font-bold text-sm text-purple-700">Retiro Cliente</span>
+                            <span id="badge-count-R" class="bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="col-R" class="space-y-3 overflow-y-auto max-h-[600px] flex-1"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCION: KPI 1 - CUMPLIMIENTO 48H HÁBILES -->
+            <section id="sec-kpi1" class="view-section hidden">
+                <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-clock text-brand-600 mr-2"></i>Cumplimiento de Compromiso de Despacho (48h Hábiles)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-semibold uppercase">Cumplimiento Global</p>
+                        <p id="kpi1-percent" class="text-3xl font-bold text-brand-700 mt-2">0%</p>
+                        <p class="text-xs text-slate-400 mt-1">Excluye retiros en tienda y NVs Nulas</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-semibold uppercase">NVs a Tiempo</p>
+                        <p id="kpi1-ontime" class="text-3xl font-bold text-green-600 mt-2">0</p>
+                        <p class="text-xs text-slate-400 mt-1">Coordinadas dentro de ventana 48h</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <p class="text-xs text-slate-500 font-semibold uppercase">NVs Atrasadas / Alerta</p>
+                        <p id="kpi1-late" class="text-3xl font-bold text-red-600 mt-2">0</p>
+                        <p class="text-xs text-slate-400 mt-1">Superan 48h hábiles de ventana laboral</p>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <p class="text-sm font-bold text-slate-700 mb-2">Regla de Negocio Aplicada:</p>
+                    <p class="text-xs text-slate-600">Creación &lt; 15:00 hrs inicia conteo de horas hábiles el mismo día. Creación &ge; 15:00 hrs inicia el siguiente día hábil a las 09:00 hrs. Ventana laboral de Lunes a Viernes 09:00 a 18:00 hrs (48h hábiles acumuladas).</p>
+                </div>
+            </section>
+
+            <!-- SECCION: KPI 2 - FILL RATE PONDERADO -->
+            <section id="sec-kpi2" class="view-section hidden">
+                <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-chart-pie text-brand-600 mr-2"></i>Fill Rate Ponderado por Monto</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-center items-center">
+                        <p class="text-sm font-semibold text-slate-500">Fill Rate Ponderado Totales ($)</p>
+                        <p id="kpi2-fillrate" class="text-4xl font-extrabold text-brand-600 my-4">0%</p>
+                        <p class="text-xs text-slate-400 text-center">Calculado sobre la suma del valor de líneas facturadas versus solicitudes totales.</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-sm font-bold text-slate-700 mb-4">Desglose de Montos</h3>
+                        <div class="h-48 flex justify-center">
+                            <canvas id="chartFillRate"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCION: KPI 3 - QUIEBRE DE STOCK -->
+            <section id="sec-kpi3" class="view-section hidden">
+                <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-boxes-packing text-brand-600 mr-2"></i>Quiebre de Stock / Fill Rate por Producto</h2>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-brand-600 text-white font-semibold">
+                            <tr>
+                                <th class="p-3">Código/Producto</th>
+                                <th class="p-3 text-right">Solicitado (Cant)</th>
+                                <th class="p-3 text-right">Disponible</th>
+                                <th class="p-3 text-right">Diferencia / Quiebre</th>
+                                <th class="p-3 text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kpi3-table-body" class="divide-y divide-slate-100">
+                            <tr><td colspan="5" class="p-4 text-center text-slate-400">Cargue datos para visualizar quiebres.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECCION: KPI 4 - NORMA $300.000 -->
+            <section id="sec-kpi4" class="view-section hidden">
+                <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-triangle-exclamation text-brand-600 mr-2"></i>Incumplimiento de Norma de Monto Mínimo ($300.000)</h2>
+                <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-500 font-semibold uppercase">Total NVs Bajo $300.000 Despachadas</p>
+                            <p id="kpi4-monto-total" class="text-2xl font-bold text-amber-600 mt-1">$0</p>
+                        </div>
+                        <span id="kpi4-count-badge" class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full">0 NVs Afectadas</span>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-brand-600 text-white font-semibold">
+                            <tr>
+                                <th class="p-3">N° NV</th>
+                                <th class="p-3">Cliente</th>
+                                <th class="p-3">Vendedor</th>
+                                <th class="p-3 text-right">Monto Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kpi4-table-body" class="divide-y divide-slate-100">
+                            <tr><td colspan="4" class="p-4 text-center text-slate-400">Sin datos cargados.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECCION: KPI 5 & 6 - RANKINGS -->
+            <section id="sec-kpi5" class="view-section hidden">
+                <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-ranking-star text-brand-600 mr-2"></i>Rankings: Clientes y Operación</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Top Clientes por Facturación</h3>
+                        <div id="ranking-clientes-list" class="space-y-2 text-xs"></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 class="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Rendimiento Operativo (Picking / Chofer)</h3>
+                        <div id="ranking-operacion-list" class="space-y-2 text-xs"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCION: KPI 7 - ALERTAS RETIRO MAL MARCADO -->
+            <section id="sec-kpi7" class="view-section hidden">
+                <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-circle-exclamation text-red-600 mr-2"></i>Alerta: Retiro Mal Marcado como Despacho</h2>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-red-600 text-white font-semibold">
+                            <tr>
+                                <th class="p-3">N° NV</th>
+                                <th class="p-3">Cliente</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Chofer</th>
+                                <th class="p-3">Patente</th>
+                                <th class="p-3">Alerta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kpi7-table-body" class="divide-y divide-slate-100">
+                            <tr><td colspan="6" class="p-4 text-center text-slate-400">Sin inconsistencias detectadas.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECCION: KPI 8 - TRANSPORTE DIARIO -->
+            <section id="sec-kpi8" class="view-section hidden">
+                <h2 class="text-lg font-bold text-brand-900 mb-4"><i class="fa-solid fa-truck-road-koenigsegg text-brand-600 mr-2"></i>Transporte Diario (Cont_Hodo + Desp)</h2>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-brand-600 text-white font-semibold">
+                            <tr>
+                                <th class="p-3">Chofer / Patente</th>
+                                <th class="p-3 text-right">Km Recorridos</th>
+                                <th class="p-3 text-right">N° NVs Entregadas</th>
+                                <th class="p-3 text-right">Monto Total Entregado</th>
+                                <th class="p-3 text-right">Eficiencia ($/Km)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kpi8-table-body" class="divide-y divide-slate-100">
+                            <tr><td colspan="5" class="p-4 text-center text-slate-400">Sin datos de bitácora diario.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECCION: DETALLE GERENCIAL (EXPORTABLE) -->
+            <section id="sec-detalle" class="view-section hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-brand-900"><i class="fa-solid fa-table text-brand-600 mr-2"></i>Tabla de Detalle Consolidada por NV</h2>
+                    <button onclick="exportarCSV()" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2 rounded-lg font-medium shadow-sm transition">
+                        <i class="fa-solid fa-file-csv mr-1"></i> Exportar a CSV
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+                    <table class="w-full text-left text-xs whitespace-nowrap">
+                        <thead class="bg-brand-600 text-white font-semibold">
+                            <tr>
+                                <th class="p-3">N° NV</th>
+                                <th class="p-3">Cliente</th>
+                                <th class="p-3">Vendedor</th>
+                                <th class="p-3">Canal</th>
+                                <th class="p-3">Estado</th>
+                                <th class="p-3 text-right">Monto Total</th>
+                                <th class="p-3">F. Creación</th>
+                                <th class="p-3">F. Compromiso (48h)</th>
+                                <th class="p-3">F. Coordinada</th>
+                                <th class="p-3">Cumplimiento</th>
+                                <th class="p-3">OP Picking</th>
+                                <th class="p-3">Transportista</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detalle-table-body" class="divide-y divide-slate-100">
+                            <tr><td colspan="12" class="p-4 text-center text-slate-400">Cargue un archivo de datos para explorar.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- SIDEBAR LATERAL GERENCIAL (DERECHA) -->
+        <aside class="w-72 bg-brand-dark text-slate-300 flex flex-col border-l border-slate-800 shadow-2xl">
+            <div class="p-4 border-b border-slate-800">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Menú Gerencial</p>
+            </div>
+
+            <nav class="flex-1 overflow-y-auto p-3 space-y-1 text-sm font-medium">
+                <button onclick="navegarA('sec-kanban', this)" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between text-white bg-brand-600">
+                    <span><i class="fa-solid fa-columns w-6 text-brand-100"></i>Tablero Kanban</span>
+                </button>
+
+                <div class="pt-2 pb-1 px-3 text-[10px] font-bold uppercase text-slate-500">Módulo de KPIs</div>
+
+                <button onclick="navegarA('sec-kpi1', this)" class="nav-btn w-full text-left px-3 py-2 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-clock w-6 text-brand-500"></i>1. Cumplimiento 48h</span>
+                </button>
+
+                <button onclick="navegarA('sec-kpi2', this)" class="nav-btn w-full text-left px-3 py-2 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-chart-pie w-6 text-brand-500"></i>2. Fill Rate Ponderado</span>
+                </button>
+
+                <button onclick="navegarA('sec-kpi3', this)" class="nav-btn w-full text-left px-3 py-2 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-boxes-packing w-6 text-brand-500"></i>3. Quiebre de Stock</span>
+                </button>
+
+                <button onclick="navegarA('sec-kpi4', this)" class="nav-btn w-full text-left px-3 py-2 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-triangle-exclamation w-6 text-brand-500"></i>4. Norma $300.000</span>
+                </button>
+
+                <button onclick="navegarA('sec-kpi5', this)" class="nav-btn w-full text-left px-3 py-2 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-ranking-star w-6 text-brand-500"></i>5 y 6. Rankings</span>
+                </button>
+
+                <button onclick="navegarA('sec-kpi7', this)" class="nav-btn w-full text-left px-3 py-2 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-circle-exclamation w-6 text-brand-500"></i>7. Alertas Retiros</span>
+                </button>
+
+                <button onclick="navegarA('sec-kpi8', this)" class="nav-btn w-full text-left px-3 py-2 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-truck-road-koenigsegg w-6 text-brand-500"></i>8. Transporte Diario</span>
+                </button>
+
+                <div class="pt-2 pb-1 px-3 text-[10px] font-bold uppercase text-slate-500">Bajar a Detalle</div>
+
+                <button onclick="navegarA('sec-detalle', this)" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between hover:bg-slate-800 hover:text-white">
+                    <span><i class="fa-solid fa-table w-6 text-brand-500"></i>Pestaña Detalle NV</span>
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+                Dashboard v2 - Gerencia & Operations
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- SCRIPT DE LOGICA DE NEGOCIO Y LECTURA EXCEL -->
+    <script>
+        // Clave requerida
+        const CLAVE_ACCESO = "Victor16";
+
+        // Estructura global de datos parseados
+        let globalData = {
+            corte: [],
+            desp: [],
+            contHodo: [],
+            valorDes: [],
+            consolidadoNV: []
+        };
+
+        let fillRateChartInstance = null;
+
+        // Modal y Autenticación
+        function solicitarAccesoCarga() {
+            document.getElementById('inputClave').value = '';
+            document.getElementById('errorClave').classList.add('hidden');
+            document.getElementById('modalAuth').classList.remove('hidden');
+        }
+
+        function cerrarModalAuth() {
+            document.getElementById('modalAuth').classList.add('hidden');
+        }
+
+        function validarClave() {
+            const claveIngresada = document.getElementById('inputClave').value;
+            if (claveIngresada === CLAVE_ACCESO) {
+                cerrarModalAuth();
+                document.getElementById('containerFileUpload').classList.remove('hidden');
+            } else {
+                document.getElementById('errorClave').classList.remove('hidden');
+            }
+        }
+
+        function cancelarCarga() {
+            document.getElementById('containerFileUpload').classList.add('hidden');
+        }
+
+        // Navegación Sidebar
+        function navegarA(idSeccion, btnElement) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(idSeccion).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-600', 'text-white');
+                btn.classList.add('hover:bg-slate-800', 'hover:text-white');
+            });
+
+            btnElement.classList.add('bg-brand-600', 'text-white');
+        }
+
+        // Event Listener Carga Archivo Excel
+        document.getElementById('excelFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+
+                // Lectura de pestañas
+                globalData.corte = XLSX.utils.sheet_to_json(workbook.Sheets['Corte'] || {}) || [];
+                globalData.desp = XLSX.utils.sheet_to_json(workbook.Sheets['Desp'] || {}) || [];
+                globalData.contHodo = XLSX.utils.sheet_to_json(workbook.Sheets['Cont_Hodo'] || {}) || [];
+                globalData.valorDes = XLSX.utils.sheet_to_json(workbook.Sheets['Valor_DES'] || {}) || [];
+
+                procesarReglasNegocio();
+                
+                // Actualizar timestamp
+                const now = new Date();
+                document.getElementById('lastUpdateTag').innerText = now.toLocaleString('es-CL');
+                document.getElementById('containerFileUpload').classList.add('hidden');
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // REGLA DE CÁLCULO: 48h Hábiles (09:00 - 18:00, Lun-Vie)
+        function calcularFechaCompromiso(fechaCreacion) {
+            if (!fechaCreacion) return null;
+            let date = new Date(fechaCreacion);
+            if (isNaN(date.getTime())) return null;
+
+            let hora = date.getHours();
+            
+            // Regla: si se crea >= 15:00 hrs, el conteo inicia el siguiente día hábil a las 09:00
+            if (hora >= 15) {
+                date.setDate(date.getDate() + 1);
+                date.setHours(9, 0, 0, 0);
+            }
+
+            let horasRestantes = 48;
+            while (horasRestantes > 0) {
+                let day = date.getDay();
+                // Fin de semana -> Lunes 09:00
+                if (day === 6) { // Sábado
+                    date.setDate(date.getDate() + 2);
+                    date.setHours(9, 0, 0, 0);
+                    continue;
+                } else if (day === 0) { // Domingo
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(9, 0, 0, 0);
+                    continue;
+                }
+
+                // Horario laboral 09:00 a 18:00
+                let actualHora = date.getHours();
+                if (actualHora < 9) {
+                    date.setHours(9, 0, 0, 0);
+                    actualHora = 9;
+                }
+
+                if (actualHora >= 18) {
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(9, 0, 0, 0);
+                    continue;
+                }
+
+                let disponiblesHoy = 18 - actualHora;
+                if (horasRestantes <= disponiblesHoy) {
+                    date.setHours(actualHora + horasRestantes);
+                    horasRestantes = 0;
+                } else {
+                    horasRestantes -= disponiblesHoy;
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(9, 0, 0, 0);
+                }
+            }
+            return date;
+        }
+
+        // PROCESAMIENTO CONSOLIDADO
+        function procesarReglasNegocio() {
+            let mapaNV = {};
+
+            globalData.desp.forEach(row => {
+                const nv = row.NV || row.nv || row['N° NV'];
+                const estado = (row.nvEstado || row.Estado || 'A').toUpperCase().trim();
+
+                // Regla Exclusión: Nulo
+                if (estado === 'N' || estado === 'NULO') return;
+
+                const fCreacion = row.F_creacion ? new Date(row.F_creacion) : new Date();
+                const fCoordinacion = row.F_coordinacion ? new Date(row.F_coordinacion) : null;
+                const fCompromiso = calcularFechaCompromiso(fCreacion);
+                const esRetiro = (row.Modalidad || '').toLowerCase().includes('retiro') || (row.Canal || '').toLowerCase().includes('retiro');
+
+                let aTiempo = false;
+                if (!esRetiro && fCoordinacion && fCompromiso) {
+                    aTiempo = fCoordinacion <= fCompromiso;
+                }
+
+                mapaNV[nv] = {
+                    nv: nv,
+                    cliente: row.NomAux || row.Cliente || 'Cliente General',
+                    vendedor: row.Vendedor || 'S/V',
+                    canal: row.Canal || 'General',
+                    estado: estado,
+                    montoTotal: parseFloat(row.nvTotLinea || row.Monto || 0),
+                    fCreacion: fCreacion,
+                    fCompromiso: fCompromiso,
+                    fCoordinacion: fCoordinacion,
+                    esRetiro: esRetiro,
+                    aTiempo: aTiempo,
+                    opPicking: row.OP_Picking || row.Picking || 'S/I',
+                    chofer: row.Chofer || '',
+                    patente: row.Patente || '',
+                    statusDespacho: (row.Status || '').toUpperCase()
+                };
+            });
+
+            globalData.consolidadoNV = Object.values(mapaNV);
+            aplicarFiltros();
+        }
+
+        // FILTROS & RENDER
+        function aplicarFiltros() {
+            const tipo = document.getElementById('filterType').value;
+            const fechaFiltroVal = document.getElementById('filterDate').value;
+
+            let filtrados = globalData.consolidadoNV;
+
+            if (tipo !== 'todos' && fechaFiltroVal) {
+                const fTarget = new Date(fechaFiltroVal);
+                filtrados = filtrados.filter(item => {
+                    if (!item.fCoordinacion) return false;
+                    if (tipo === 'dia') {
+                        return item.fCoordinacion.toISOString().slice(0, 10) === fechaFiltroVal;
+                    } else if (tipo === 'semana') {
+                        return getWeekNumber(fTarget) === getWeekNumber(item.fCoordinacion);
+                    }
+                    return true;
+                });
+            }
+
+            renderKanban(filtrados);
+            renderKPI1(filtrados);
+            renderKPI2(filtrados);
+            renderKPI3(globalData.corte);
+            renderKPI4(filtrados);
+            renderKPI5y6(filtrados);
+            renderKPI7(filtrados);
+            renderKPI8(globalData.contHodo, filtrados);
+            renderTablaDetalle(filtrados);
+        }
+
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        // RENDERERS
+        function renderKanban(list) {
+            const colC = document.getElementById('col-C');
+            const colA = document.getElementById('col-A');
+            const colP = document.getElementById('col-P');
+            const colR = document.getElementById('col-R');
+
+            colC.innerHTML = ''; colA.innerHTML = ''; colP.innerHTML = ''; colR.innerHTML = '';
+            let countC = 0, countA = 0, countP = 0, countR = 0;
+
+            list.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-lg shadow-sm border border-slate-200 text-xs hover:shadow-md transition";
+                card.innerHTML = `
+                    <div class="font-bold text-slate-800">NV #${item.nv}</div>
+                    <div class="text-slate-600 truncate">${item.cliente}</div>
+                    <div class="text-slate-400 mt-1 flex justify-between">
+                        <span>$${item.montoTotal.toLocaleString('es-CL')}</span>
+                        <span class="font-semibold">${item.canal}</span>
+                    </div>
+                `;
+
+                if (item.esRetiro) {
+                    colR.appendChild(card); countR++;
+                } else if (item.estado === 'C') {
+                    colC.appendChild(card); countC++;
+                } else if (item.estado === 'A') {
+                    colA.appendChild(card); countA++;
+                } else if (item.estado === 'P') {
+                    colP.appendChild(card); countP++;
+                }
+            });
+
+            document.getElementById('badge-count-C').innerText = countC;
+            document.getElementById('badge-count-A').innerText = countA;
+            document.getElementById('badge-count-P').innerText = countP;
+            document.getElementById('badge-count-R').innerText = countR;
+        }
+
+        function renderKPI1(list) {
+            const despachados = list.filter(i => !i.esRetiro);
+            const aTiempo = despachados.filter(i => i.aTiempo).length;
+            const atrasados = despachados.length - aTiempo;
+            const pct = despachados.length > 0 ? Math.round((aTiempo / despachados.length) * 100) : 0;
+
+            document.getElementById('kpi1-percent').innerText = `${pct}%`;
+            document.getElementById('kpi1-ontime').innerText = aTiempo;
+            document.getElementById('kpi1-late').innerText = atrasados;
+        }
+
+        function renderKPI2(list) {
+            const totalMonto = list.reduce((sum, i) => sum + i.montoTotal, 0);
+            const concluidosMonto = list.filter(i => i.estado === 'C').reduce((sum, i) => sum + i.montoTotal, 0);
+            const fillRate = totalMonto > 0 ? Math.round((concluidosMonto / totalMonto) * 100) : 0;
+
+            document.getElementById('kpi2-fillrate').innerText = `${fillRate}%`;
+
+            const ctx = document.getElementById('chartFillRate').getContext('2d');
+            if (fillRateChartInstance) fillRateChartInstance.destroy();
+
+            fillRateChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Facturado/Concluido', 'Pendiente/Aceptado'],
+                    datasets: [{
+                        data: [concluidosMonto, totalMonto - concluidosMonto],
+                        backgroundColor: ['#2563eb', '#cbd5e1']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function renderKPI3(corteData) {
+            const tbody = document.getElementById('kpi3-table-body');
+            tbody.innerHTML = '';
+
+            if (!corteData || corteData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Sin datos en pestaña Corte.</td></tr>`;
+                return;
+            }
+
+            corteData.slice(0, 10).forEach(row => {
+                const tr = document.createElement('tr');
+                const solicitado = parseFloat(row.nvCant || 0);
+                const disponible = parseFloat(row.StockDis || 0);
+                const quiebre = disponible < solicitado;
+
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-700">${row.CodProd || row.Producto || 'SKU'}</td>
+                    <td class="p-3 text-right">${solicitado}</td>
+                    <td class="p-3 text-right">${disponible}</td>
+                    <td class="p-3 text-right font-bold ${quiebre ? 'text-red-600' : 'text-slate-600'}">${disponible - solicitado}</td>
+                    <td class="p-3 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${quiebre ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                            ${quiebre ? 'Quiebre' : 'OK'}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderKPI4(list) {
+            const bajoNorma = list.filter(i => i.montoTotal < 300000 && !i.esRetiro);
+            const totalMonto = bajoNorma.reduce((sum, i) => sum + i.montoTotal, 0);
+
+            document.getElementById('kpi4-monto-total').innerText = `$${totalMonto.toLocaleString('es-CL')}`;
+            document.getElementById('kpi4-count-badge').innerText = `${bajoNorma.length} NVs Afectadas`;
+
+            const tbody = document.getElementById('kpi4-table-body');
+            tbody.innerHTML = '';
+
+            bajoNorma.forEach(i => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-700">#${i.nv}</td>
+                    <td class="p-3">${i.cliente}</td>
+                    <td class="p-3">${i.vendedor}</td>
+                    <td class="p-3 text-right font-semibold text-amber-700">$${i.montoTotal.toLocaleString('es-CL')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderKPI5y6(list) {
+            const clientMap = {};
+            list.forEach(i => {
+                clientMap[i.cliente] = (clientMap[i.cliente] || 0) + i.montoTotal;
+            });
+            const sortedClients = Object.entries(clientMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+            const containerC = document.getElementById('ranking-clientes-list');
+            containerC.innerHTML = sortedClients.map(([name, val], index) => `
+                <div class="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-100">
+                    <span class="font-semibold text-slate-700">${index + 1}. ${name}</span>
+                    <span class="font-bold text-brand-600">$${val.toLocaleString('es-CL')}</span>
+                </div>
+            `).join('');
+
+            const pickMap = {};
+            list.forEach(i => {
+                pickMap[i.opPicking] = (pickMap[i.opPicking] || 0) + 1;
+            });
+            const sortedPick = Object.entries(pickMap).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+            const containerO = document.getElementById('ranking-operacion-list');
+            containerO.innerHTML = sortedPick.map(([name, val], index) => `
+                <div class="flex justify-between items-center p-2 rounded bg-slate-50 border border-slate-100">
+                    <span class="font-semibold text-slate-700">${index + 1}. ${name}</span>
+                    <span class="font-bold text-green-600">${val} NVs Atendidas</span>
+                </div>
+            `).join('');
+        }
+
+        function renderKPI7(list) {
+            const alertas = list.filter(i => i.statusDespacho.includes('DESPACHADO') && (!i.chofer || !i.patente));
+            const tbody = document.getElementById('kpi7-table-body');
+            tbody.innerHTML = '';
+
+            if (alertas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Sin alertas detectadas.</td></tr>`;
+                return;
+            }
+
+            alertas.forEach(i => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-700">#${i.nv}</td>
+                    <td class="p-3">${i.cliente}</td>
+                    <td class="p-3"><span class="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded font-bold">${i.statusDespacho}</span></td>
+                    <td class="p-3 text-red-600 font-semibold">${i.chofer || 'VACÍO'}</td>
+                    <td class="p-3 text-red-600 font-semibold">${i.patente || 'VACÍO'}</td>
+                    <td class="p-3"><span class="bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded font-bold">Retiro Mal Marcado</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderKPI8(contHodo, list) {
+            const tbody = document.getElementById('kpi8-table-body');
+            tbody.innerHTML = '';
+
+            if (!contHodo || contHodo.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Pestaña Cont_Hodo sin registros.</td></tr>`;
+                return;
+            }
+
+            contHodo.forEach(row => {
+                const chofer = row.Chofer || 'Chofer';
+                const km = parseFloat(row.KmRecorridos || row.Km || 0);
+                const nvs = parseInt(row.N_NVs || 0);
+                const monto = parseFloat(row.MontoEntregado || 0);
+                const valorKm = km > 0 ? (monto / km).toFixed(0) : 0;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-700">${chofer} (${row.Patente || 'S/P'})</td>
+                    <td class="p-3 text-right">${km} km</td>
+                    <td class="p-3 text-right">${nvs}</td>
+                    <td class="p-3 text-right font-semibold text-brand-600">$${monto.toLocaleString('es-CL')}</td>
+                    <td class="p-3 text-right font-bold text-green-600">$${parseInt(valorKm).toLocaleString('es-CL')}/km</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTablaDetalle(list) {
+            const tbody = document.getElementById('detalle-table-body');
+            tbody.innerHTML = '';
+
+            list.forEach(i => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-brand-700">#${i.nv}</td>
+                    <td class="p-3">${i.cliente}</td>
+                    <td class="p-3">${i.vendedor}</td>
+                    <td class="p-3">${i.canal}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100">${i.estado}</span></td>
+                    <td class="p-3 text-right font-semibold">$${i.montoTotal.toLocaleString('es-CL')}</td>
+                    <td class="p-3">${i.fCreacion ? i.fCreacion.toLocaleDateString('es-CL') : '-'}</td>
+                    <td class="p-3 text-brand-600 font-medium">${i.fCompromiso ? i.fCompromiso.toLocaleString('es-CL') : '-'}</td>
+                    <td class="p-3">${i.fCoordinacion ? i.fCoordinacion.toLocaleDateString('es-CL') : 'Sin Coord.'}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${i.esRetiro ? 'bg-purple-100 text-purple-800' : (i.aTiempo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}">
+                            ${i.esRetiro ? 'Retiro' : (i.aTiempo ? 'A Tiempo' : 'Atrasado')}
+                        </span>
+                    </td>
+                    <td class="p-3">${i.opPicking}</td>
+                    <td class="p-3">${i.chofer}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Exportar a CSV
+        function exportarCSV() {
+            if (globalData.consolidadoNV.length === 0) {
+                alert('No hay datos para exportar');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "NV,Cliente,Vendedor,Canal,Estado,MontoTotal,FechaCreacion,FechaCompromiso,FechaCoordinada,Cumplimiento,OP_Picking,Chofer\n";
+
+            globalData.consolidadoNV.forEach(i => {
+                const row = [
+                    i.nv,
+                    `"${i.cliente}"`,
+                    `"${i.vendedor}"`,
+                    `"${i.canal}"`,
+                    i.estado,
+                    i.montoTotal,
+                    i.fCreacion ? i.fCreacion.toISOString() : '',
+                    i.fCompromiso ? i.fCompromiso.toISOString() : '',
+                    i.fCoordinacion ? i.fCoordinacion.toISOString() : '',
+                    i.esRetiro ? 'Retiro' : (i.aTiempo ? 'A Tiempo' : 'Atrasado'),
+                    `"${i.opPicking}"`,
+                    `"${i.chofer}"`
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "detalle_despachos_gerencia.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
