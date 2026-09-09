@@ -66,7 +66,7 @@
                 <h3 class="text-lg font-bold text-brand-900"><i class="fa-solid fa-lock text-brand-600 mr-2"></i>Acceso Restringido</h3>
                 <button onclick="cerrarModalAuth()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <p class="text-sm text-slate-600 mb-4">Ingrese la clave de actualización para habilitar la carga local de la planilla operativa (.xlsx):</p>
+            <p class="text-sm text-slate-600 mb-4">Ingrese la clave de actualización para habilitar la carga local de la planilla operativa (.xlsx / .xlsm):</p>
             <input type="password" id="inputClave" placeholder="Clave de seguridad" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-600 mb-2">
             <p id="errorClave" class="text-xs text-red-600 hidden mb-3"><i class="fa-solid fa-circle-exclamation mr-1"></i>Clave incorrecta. Intente nuevamente.</p>
             
@@ -77,18 +77,18 @@
         </div>
     </div>
 
-    <!-- Area Oculta de Carga de Archivo (Se habilita tras validar clave Victor16) -->
+    <!-- Area Oculta de Carga de Archivo (Habilitada para XLSM, XLSX, XLS, XLSB) -->
     <div id="containerFileUpload" class="bg-brand-50 border-b border-brand-200 px-6 py-4 hidden">
         <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-file-excel text-green-600 text-2xl"></i>
                 <div>
-                    <p class="text-sm font-semibold text-brand-900">Acceso concedido. Seleccione el archivo Excel operativo:</p>
+                    <p class="text-sm font-semibold text-brand-900">Acceso concedido. Seleccione el archivo Excel (.xlsx / .xlsm):</p>
                     <p class="text-xs text-slate-500">Debe contener las pestañas: Corte, Desp, Cont_Hodo, Valor_DES</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
-                <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-600 file:text-white hover:file:bg-brand-700 cursor-pointer"/>
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .xlsm, .xlsb" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-600 file:text-white hover:file:bg-brand-700 cursor-pointer"/>
                 <button onclick="cancelarCarga()" class="text-xs text-slate-500 hover:text-slate-800 underline">Cerrar</button>
             </div>
         </div>
@@ -404,7 +404,7 @@
 
     </div>
 
-    <!-- SCRIPT DE LOGICA DE NEGOCIO Y LECTURA EXCEL -->
+    <!-- SCRIPT DE LOGICA DE NEGOCIO Y LECTURA EXCEL CON SOPORTE XLSM -->
     <script>
         // Clave requerida
         const CLAVE_ACCESO = "Victor16";
@@ -458,28 +458,50 @@
             btnElement.classList.add('bg-brand-600', 'text-white');
         }
 
-        // Event Listener Carga Archivo Excel
+        // Función auxiliar para buscar pestañas de forma flexible (ignora espacios extra y capitalización)
+        function obtenerHojaFlexible(workbook, nombreBuscado) {
+            const objetivo = nombreBuscado.trim().toLowerCase();
+            const nombreReal = workbook.SheetNames.find(s => s.trim().toLowerCase() === objetivo);
+            return nombreReal ? workbook.Sheets[nombreReal] : null;
+        }
+
+        // Event Listener Carga Archivo Excel (Soporte Mejorado para .XLSM)
         document.getElementById('excelFileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    // Habilitar lectura de fechas y macros en formato array
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
 
-                // Lectura de pestañas
-                globalData.corte = XLSX.utils.sheet_to_json(workbook.Sheets['Corte'] || {}) || [];
-                globalData.desp = XLSX.utils.sheet_to_json(workbook.Sheets['Desp'] || {}) || [];
-                globalData.contHodo = XLSX.utils.sheet_to_json(workbook.Sheets['Cont_Hodo'] || {}) || [];
-                globalData.valorDes = XLSX.utils.sheet_to_json(workbook.Sheets['Valor_DES'] || {}) || [];
+                    // Búsqueda flexible de pestañas
+                    const sheetCorte = obtenerHojaFlexible(workbook, 'Corte');
+                    const sheetDesp = obtenerHojaFlexible(workbook, 'Desp');
+                    const sheetHodo = obtenerHojaFlexible(workbook, 'Cont_Hodo');
+                    const sheetValor = obtenerHojaFlexible(workbook, 'Valor_DES');
 
-                procesarReglasNegocio();
-                
-                // Actualizar timestamp
-                const now = new Date();
-                document.getElementById('lastUpdateTag').innerText = now.toLocaleString('es-CL');
-                document.getElementById('containerFileUpload').classList.add('hidden');
+                    globalData.corte = sheetCorte ? XLSX.utils.sheet_to_json(sheetCorte) : [];
+                    globalData.desp = sheetDesp ? XLSX.utils.sheet_to_json(sheetDesp) : [];
+                    globalData.contHodo = sheetHodo ? XLSX.utils.sheet_to_json(sheetHodo) : [];
+                    globalData.valorDes = sheetValor ? XLSX.utils.sheet_to_json(sheetValor) : [];
+
+                    if (globalData.desp.length === 0) {
+                        alert("Atención: No se encontraron registros en la pestaña 'Desp'. Asegúrate de que la hoja exista en tu archivo XLSM.");
+                    }
+
+                    procesarReglasNegocio();
+                    
+                    // Actualizar timestamp
+                    const now = new Date();
+                    document.getElementById('lastUpdateTag').innerText = now.toLocaleString('es-CL');
+                    document.getElementById('containerFileUpload').classList.add('hidden');
+                } catch (err) {
+                    console.error("Error al procesar el archivo Excel/XLSM:", err);
+                    alert("Ocurrió un problema al leer el archivo Excel: " + err.message);
+                }
             };
             reader.readAsArrayBuffer(file);
         });
@@ -544,7 +566,9 @@
 
             globalData.desp.forEach(row => {
                 const nv = row.NV || row.nv || row['N° NV'];
-                const estado = (row.nvEstado || row.Estado || 'A').toUpperCase().trim();
+                if (!nv) return;
+
+                const estado = String(row.nvEstado || row.Estado || 'A').toUpperCase().trim();
 
                 // Regla Exclusión: Nulo
                 if (estado === 'N' || estado === 'NULO') return;
@@ -552,7 +576,7 @@
                 const fCreacion = row.F_creacion ? new Date(row.F_creacion) : new Date();
                 const fCoordinacion = row.F_coordinacion ? new Date(row.F_coordinacion) : null;
                 const fCompromiso = calcularFechaCompromiso(fCreacion);
-                const esRetiro = (row.Modalidad || '').toLowerCase().includes('retiro') || (row.Canal || '').toLowerCase().includes('retiro');
+                const esRetiro = String(row.Modalidad || '').toLowerCase().includes('retiro') || String(row.Canal || '').toLowerCase().includes('retiro');
 
                 let aTiempo = false;
                 if (!esRetiro && fCoordinacion && fCompromiso) {
@@ -565,7 +589,7 @@
                     vendedor: row.Vendedor || 'S/V',
                     canal: row.Canal || 'General',
                     estado: estado,
-                    montoTotal: parseFloat(row.nvTotLinea || row.Monto || 0),
+                    montoTotal: parseFloat(row.nvTotLinea || row.Monto || 0) || 0,
                     fCreacion: fCreacion,
                     fCompromiso: fCompromiso,
                     fCoordinacion: fCoordinacion,
@@ -574,7 +598,7 @@
                     opPicking: row.OP_Picking || row.Picking || 'S/I',
                     chofer: row.Chofer || '',
                     patente: row.Patente || '',
-                    statusDespacho: (row.Status || '').toUpperCase()
+                    statusDespacho: String(row.Status || '').toUpperCase()
                 };
             });
 
